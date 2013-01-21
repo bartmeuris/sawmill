@@ -5,8 +5,8 @@
 ##
 #############################################################################
 
-CC    ?= gcc
-CXX   ?= g++
+#CC    ?= gcc
+#CXX   ?= g++
 CC := clang
 CXX := clang++
 LINK  := $(CXX)
@@ -30,6 +30,7 @@ VER_MINOR     := 1
 # Main application objects
 OBJECTS := \
 	sawmill.o \
+	configmanager.o \
 	# End of list
 
 # Protocol buffer objects
@@ -40,7 +41,9 @@ PB_OBJECTS := \
 
 
 SHARED_LIBS   := pthread
-STATIC_LIBS   := protobuf
+# Comment/uncomment the following lines to produce a staticly linked executable
+SHARED_LIBS   := $(SHARED_LIBS):protobuf:boost_program_options:boost_regex:boost_filesystem:boost_system
+#STATIC_LIBS   := protobuf:boost_program_options:boost_regex:boost_filesystem:boost_system
 
 C_DIRS        := .:./src
 H_DIRS        := .:./src
@@ -125,8 +128,11 @@ CXXFLAGS_DEPENDENCIES := $(CFLAGS_DEFINE) $(CFLAGS_INCLUDE)
 # Build rules
 #
 VPATH := $(C_DIRS)
+vpath %.h $(C_DIRS):$(H_DIRS)
 vpath %.a $(LIB_DIRS)
 vpath %.proto $(PB_DIRS)
+
+.PRECIOUS: $(PBGENS)
 
 %.pb.cc: %.proto
 	$(PBC) $(PB_INCLUDE) --cpp_out=./ $<;
@@ -171,7 +177,7 @@ install:
 	# TODO
 
 clean:
-	-rm $(TARGET_RELEASE) $(TARGET_DEBUG) $(TARGET) *.pb.cc *.pb.h *.do *.o *.d
+	-rm $(TARGET_RELEASE) $(TARGET_DEBUG) $(TARGET) $(PB_GENS) $(OBJECTS_DEBUG) $(OBJECTS_RELEASE) $(DEPENDENCIES)
 
 release: $(TARGET_RELEASE)
 
