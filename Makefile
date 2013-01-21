@@ -27,7 +27,9 @@ VER_MINOR     := 1
 OBJECTS := \
 	sawmill.o \
 	logevent.pb.o \
+	command.pb.o \
 	# End of list
+
 
 SHARED_LIBS   := pthread
 STATIC_LIBS   := protobuf
@@ -117,8 +119,7 @@ vpath %.proto .:./protocolbuffers
 %.pb.cc: %.proto
 	/usr/bin/protoc -I./protocolbuffers --cpp_out=./ $<;
 
-%.pb.h: %.proto
-	/usr/bin/protoc -I./protocolbuffers --cpp_out=./ $<;
+%.pb.h: %.pb.cc
 
 %.do: %.c
 	$(CC) -c $(CFLAGS_DEBUG) -o $@ $<;
@@ -140,14 +141,13 @@ vpath %.proto .:./protocolbuffers
 
 # Dependency files
 %.d: %.c
-	@$(CC) -MM -MP $(CFLAGS_DEPENDENCIES) -MT '$(@:%.d=%.o) $(@:%.d=%.do) $@' -o $@ $<;
+	$(CC) -MM -MP $(CFLAGS_DEPENDENCIES) -MT '$(@:%.d=%.o) $(@:%.d=%.do) $@' -o $@ $<;
 
 %.d: %.cc
-	@$(CXX) -MM -MP $(CXXFLAGS_DEPENDENCIES) -MT '$(@:%.d=%.o) $(@:%.d=%.do) $@' -o $@ $<;
+	$(CXX) -MM -MP $(CXXFLAGS_DEPENDENCIES) -MT '$(@:%.d=%.o) $(@:%.d=%.do) $@' -o $@ $<;
 
 %.d: %.cpp
-	@$(CXX) -MM -MP $(CXXFLAGS_DEPENDENCIES) -MT '$(@:%.d=%.o) $(@:%.d=%.do) $@' -o $@ $<;
-			
+	$(CXX) -MM -MP $(CXXFLAGS_DEPENDENCIES) -MT '$(@:%.d=%.o) $(@:%.d=%.do) $@' -o $@ $<;
 
 #############################################################################
 # Targets
@@ -177,6 +177,9 @@ $(TARGET_RELEASE): $(OBJECTS_RELEASE) $(LIBDEPS_STATIC)
 	$(LINK) $(LFLAGS_RELEASE) $^ -o $@ $(LIBDEPS_SHARED)
 	$(STRIP) $@
 	$(SYMLINK) $@ $(TARGET)
+
+## Additional dependencies
+command.pb.cc: logevent.pb.cc
 
 #############################################################################
 # Include the .d files
