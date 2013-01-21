@@ -9,10 +9,9 @@ message LogEvent {
 	optional string type      = 0;
 	optional string timestamp = 1;
 	optional string source    = 2;
-	optional string path      = 3;
-	optional string message   = 4;
+	optional string message   = 3;
 	
-	repeated Field field      = 5;
-	repeated string tags      = 6;
+	repeated Field field      = 4;
+	repeated string tag       = 5;
 }
 
