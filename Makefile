@@ -205,6 +205,6 @@ $(DEPENDENCIES): $(PB_GENS)
 #############################################################################
 # Include the .d files
 ifneq ($(findstring clean,${MAKECMDGOALS}),clean)
-  include $(DEPENDENCIES)
+  -include $(DEPENDENCIES)
 endif
 
