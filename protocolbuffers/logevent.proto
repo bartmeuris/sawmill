@@ -1,0 +1,15 @@
+package sawmill;
+
+LogEvent {
+	optional string timestamp = 1;
+	optional string source    = 2;
+	optional string path      = 3;
+	
+	message Field {
+		required string key   = 1;
+		optional string value = 2;
+	}
+	repeated Field fields    = 4 [packed = true];
+	repeated string tags     = 5 [packed = true];
+}
+
