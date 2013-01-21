@@ -42,8 +42,8 @@ PB_OBJECTS := \
 SHARED_LIBS   := pthread
 STATIC_LIBS   := protobuf
 
-C_DIRS        := .
-H_DIRS        := .
+C_DIRS        := .:./src
+H_DIRS        := .:./src
 PB_DIRS       := ./protocolbuffers
 
 LIB_DIRS      := /usr/lib:/usr/local/lib
