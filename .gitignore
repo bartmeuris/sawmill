@@ -15,3 +15,6 @@
 sawmill
 sawmill_debug
 sawmill_release
+
+# Vim temp files
+.*.swp
