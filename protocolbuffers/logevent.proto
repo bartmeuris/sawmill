@@ -6,12 +6,12 @@ message Field {
 }
 
 message LogEvent {
-	optional string type      = 0;
-	optional string timestamp = 1;
-	optional string source    = 2;
-	optional string message   = 3;
+	optional string type      = 1;
+	optional string timestamp = 2;
+	optional string source    = 3;
+	optional string message   = 4;
 	
-	repeated Field field      = 4;
-	repeated string tag       = 5;
+	repeated Field field      = 5;
+	repeated string tag       = 6;
 }
 

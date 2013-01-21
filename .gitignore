@@ -1,6 +1,5 @@
 # Compiled Object files
-*.slo
-*.lo
+*.do
 *.o
 
 # Compiled Dynamic libraries
@@ -8,6 +7,11 @@
 *.dylib
 
 # Compiled Static libraries
-*.lai
-*.la
 *.a
+
+# Depends files
+*.d
+
+sawmill
+sawmill_debug
+sawmill_release
