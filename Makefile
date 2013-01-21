@@ -42,8 +42,8 @@ PB_OBJECTS := \
 
 SHARED_LIBS   := pthread
 # Comment/uncomment the following lines to produce a staticly linked executable
-SHARED_LIBS   := $(SHARED_LIBS):protobuf:boost_program_options:boost_regex:boost_filesystem:boost_system
-#STATIC_LIBS   := protobuf:boost_program_options:boost_regex:boost_filesystem:boost_system
+SHARED_LIBS   := $(SHARED_LIBS):protobuf:boost_program_options:boost_regex:boost_filesystem:boost_system:zmq
+#STATIC_LIBS   := protobuf:boost_program_options:boost_regex:boost_filesystem:boost_system:zmq
 
 C_DIRS        := .:./src
 H_DIRS        := .:./src
