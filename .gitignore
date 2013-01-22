@@ -12,9 +12,9 @@
 # Depends files
 *.d
 
-sawmill
-sawmill_debug
-sawmill_release
+/sawmill
+/sawmill_debug
+/sawmill_release
 
 # Vim temp files
 .*.swp
