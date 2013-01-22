@@ -21,7 +21,7 @@ space := $(empty) $(empty)
 # Project settings
 #
 
-DEFAULT_BUILD := debug
+DEFAULT_BUILD ?= debug
 
 TARGET        := sawmill
 VER_MAJOR     := 0
@@ -157,27 +157,34 @@ vpath %.proto $(PB_DIRS)
 
 # Dependency files
 %.d: %.c
-	@$(CC) -MG -MM -MP $(CFLAGS_DEPENDENCIES) -MT '$(@:%.d=%.o) $(@:%.d=%.do) $@' -o $@ $<;
+	@$(CC) -MM -MP $(CFLAGS_DEPENDENCIES) -MT '$(@:%.d=%.o) $(@:%.d=%.do) $@' -o $@ $< 2> /dev/null;
 
 %.d: %.cc
-	@$(CXX) -MG -MM -MP $(CXXFLAGS_DEPENDENCIES) -MT '$(@:%.d=%.o) $(@:%.d=%.do) $@' -o $@ $<;
+	@$(CXX) -MM -MP $(CXXFLAGS_DEPENDENCIES) -MT '$(@:%.d=%.o) $(@:%.d=%.do) $@' -o $@ $< 2> /dev/null;
 
 %.d: %.cpp
-	@$(CXX) -MG -MM -MP $(CXXFLAGS_DEPENDENCIES) -MT '$(@:%.d=%.o) $(@:%.d=%.do) $@' -o $@ $<;
+	@$(CXX) -MM -MP $(CXXFLAGS_DEPENDENCIES) -MT '$(@:%.d=%.o) $(@:%.d=%.do) $@' -o $@ $< 2> /dev/null;
 
 
 #############################################################################
 # Targets
 #
-.PHONY: all install clean release debug always
+.PHONY: all install clean release debug depclean pbclean
 
 all: $(DEFAULT_BUILD)
 
 install:
 	# TODO
 
-clean:
-	-rm $(TARGET_RELEASE) $(TARGET_DEBUG) $(TARGET) $(PB_GENS) $(OBJECTS_DEBUG) $(OBJECTS_RELEASE) $(DEPENDENCIES)
+clean: depclean pbclean
+	-rm -f $(TARGET_RELEASE) $(TARGET_DEBUG) $(TARGET) 
+	-rm -f $(OBJECTS_DEBUG) $(OBJECTS_RELEASE)
+
+pbclean:
+	-rm -f $(PB_OBJECTS_DEBUG) $(PB_OBJECTS_RELEASE) $(PB_GENS)
+
+depclean:
+	-rm -f $(DEPENDENCIES)
 
 release: $(TARGET_RELEASE)
 
@@ -199,11 +206,7 @@ $(TARGET_RELEASE): $(OBJECTS_RELEASE) $(PB_OBJECTS_RELEASE) $(LIBDEPS_STATIC)
 $(DEPENDENCIES): $(PB_GENS)
 
 #############################################################################
-# Additional dependencies
-#
-
-#############################################################################
-# Include the .d files
+# Include the automatically generated dependency files (*.d)
 ifneq ($(findstring clean,${MAKECMDGOALS}),clean)
   -include $(DEPENDENCIES)
 endif
