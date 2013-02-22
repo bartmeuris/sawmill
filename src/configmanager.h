@@ -14,6 +14,7 @@ class ConfigManager
 
 		void addConfigSource(const std::string &source);
 		void addConfigSource(const std::vector<std::string> &sources);
+		int  sourceCount();
 		
 		/**
 		 * (re)load the configuration

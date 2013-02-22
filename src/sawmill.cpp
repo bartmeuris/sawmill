@@ -32,6 +32,13 @@ void SawMill::run(void)
 	this->config().load();
 }
 
+bool SawMill::ready()
+{
+	if (this->config().sourceCount() == 0)
+		return false;
+	return true;
+}
+
 void SawMill::showVersion(std::ostream &out)
 {
 	out << APP_NAME << " version " << VER_MAJOR << "." << VER_MINOR;
@@ -76,6 +83,7 @@ int main(int argc, char* argv[])
 		mill.showVersion(std::cout);
 	}
 	if ( vm.count("help")) {
+		mill.showVersion(std::cout);
 		std::cout << desc << std::endl;
 		return 1;
 	}
@@ -89,7 +97,11 @@ int main(int argc, char* argv[])
 	if (vm.count("config") > 0) {
 		mill.config().addConfigSource( vm["config"].as< std::vector< std::string> >() );
 	}
-	
+	if ( !mill.ready()) {
+		mill.showVersion(std::cout);
+		std::cout << desc << std::endl;
+		return 1;
+	}
 	mill.run();
 
 	return 0;

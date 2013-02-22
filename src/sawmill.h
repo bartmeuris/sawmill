@@ -16,6 +16,7 @@ public:
 	ConfigManager &config() { return configset; }
 
 	void run();
+	bool ready();
 private:
 	bool initialized;
 	ConfigManager configset;

@@ -46,6 +46,11 @@ void ConfigManager::addConfigSource(const std::string &source)
 	configsources.push_back(source);
 }
 
+int ConfigManager::sourceCount()
+{
+	return configsources.size();
+}
+
 void ConfigManager::load()
 {
 	// Locate all configfiles from the config sources - files could have been added
