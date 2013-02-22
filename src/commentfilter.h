@@ -32,6 +32,7 @@ private:
 				if ( ( c == '\r' ) || ( c == '\n' ) ) {
 					skip_eol = false;
 					lastchar = 0;
+					std::cout.put(c);
 					continue;
 				}
 			} else if (in_string) {
