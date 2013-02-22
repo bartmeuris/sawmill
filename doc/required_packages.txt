@@ -4,6 +4,9 @@ libboost1.48-all-dev
 libboost1.48-dbg
 libboost1.48-doc
 
+libssl1.0.0
+libssl-dev
+
 libkqueue-dev
 libkqueue0
 
