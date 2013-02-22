@@ -30,7 +30,7 @@ namespace bio = boost::iostreams;
 namespace sawmill {
 
 ConfigManager::ConfigManager()
-	:configsources(), configfiles(), version(-1), current_md5()
+	:configsources(), configfiles(), version(-1), current_md5(), loaded(false)
 {
 }
 
@@ -51,7 +51,19 @@ int ConfigManager::sourceCount()
 	return configsources.size();
 }
 
-void ConfigManager::load()
+bool ConfigManager::isLoaded()
+{
+	return loaded;
+}
+
+void ConfigManager::check()
+{
+	if (this->isLoaded())
+		return;
+	this->reload();
+}
+
+void ConfigManager::reload()
 {
 	// Locate all configfiles from the config sources - files could have been added
 	this->findConfigFiles();
@@ -85,12 +97,16 @@ void ConfigManager::load()
 	for (size_t i = 0; i < sizeof(configmd5); i++) {
 		md5hash << std::setw( 2 ) << (configmd5[i] & 0xFF);
 	}
-	if (this->current_md5 != md5hash.str()) {
+
+	if ((this->version < 0) && (configfiles.size() <= 0)) {
+		std::cout << "WARNING: No config files found! No initial configuration loaded" << std::endl;
+	} else if (this->current_md5 != md5hash.str()) {
 		this->version++;
 		this->current_md5 = md5hash.str();
-		std::cout << "Loaded new configuration: v" << this->version << " (hash: " << this->current_md5 << ")" <<  std::endl;
+		loaded = true;
+		std::cout << "Loaded new configuration: v" << this->version << " (hash: " << this->current_md5 << " / file count: " << configfiles.size() <<  ")" <<  std::endl;
 	} else {
-		std::cout << "Configuration not changed: v" << this->version << " (hash: " << this->current_md5 << ")" <<  std::endl;
+		std::cout << "Configuration not changed: v" << this->version << " (hash: " << this->current_md5 << " / file count: " << configfiles.size() <<  ")" <<  std::endl;
 	}
 }
 

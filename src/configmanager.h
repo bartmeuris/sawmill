@@ -19,7 +19,9 @@ class ConfigManager
 		/**
 		 * (re)load the configuration
 		 */
-		void load();
+		void reload();
+		bool isLoaded();
+		void check();
 
 		unsigned int getVersion() const;
 		
@@ -32,9 +34,10 @@ class ConfigManager
 		
 		std::vector<std::string> configsources;
 		std::vector<std::string> configfiles;
-		unsigned int version;
+		int version;
 		MD5_CTX md5context;
 		std::string current_md5;
+		bool loaded;
 };
 
 }

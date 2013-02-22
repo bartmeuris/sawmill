@@ -29,12 +29,15 @@ SawMill::SawMill()
 
 void SawMill::run(void)
 {
-	this->config().load();
+	this->config().check();
 }
 
 bool SawMill::ready()
 {
-	if (this->config().sourceCount() == 0)
+	// Check/load the config if needed
+	this->config().check();
+	// Check if it succeeded
+	if (!this->config().isLoaded())
 		return false;
 	return true;
 }
@@ -102,6 +105,7 @@ int main(int argc, char* argv[])
 		std::cout << desc << std::endl;
 		return 1;
 	}
+
 	mill.run();
 
 	return 0;
