@@ -23,6 +23,9 @@
 #include <boost/iostreams/device/file.hpp>
 #include <boost/iostreams/filter/stdio.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/foreach.hpp>
 
 namespace bfs = boost::filesystem;
 namespace bio = boost::iostreams;
@@ -72,21 +75,34 @@ void ConfigManager::reload()
 	// Also calculate hashes so we update our config version if it differs
 	unsigned char configmd5[MD5_DIGEST_LENGTH];
 	MD5_Init(&md5context);
+	boost::property_tree::ptree config;
+
 	for (std::vector<std::string>::const_iterator it = configfiles.begin(); it != configfiles.end(); it++) {
 		std::cout << "Found configfile: " << *it << std::endl;
 
 		bio::filtering_istream in;
-		in.push(CommentFilter());
+		//in.push(CommentFilter());
 		in.push(bio::file_source(*it));
+
+		/*
 		std::string line;
 		while (in) {
 			std::getline (in, line);
 			std::cout << line << std::endl;
 		}
-		//std::istream incoming(&in);
-		//bio::copy(in, std::cout);
+		*/
 
 		// Todo: Load this configuration file
+		boost::property_tree::ptree pt;
+		std::cout << "Parsing json file..." << std::endl << std::flush;
+		boost::property_tree::read_json(in, pt);
+		std::cout << "Parsed json file" << std::endl << std::flush;
+		BOOST_FOREACH(boost::property_tree::ptree::value_type &v, pt.get_child(""))
+		{
+			//assert(v.first.empty()); // array elements have no names
+			std::cout << "ptree: " << v.first.data() << " = " << v.second.data() << std::endl;
+		}
+
 		this->addMD5(*it);
 	}
 	MD5_Final(configmd5, &md5context);
