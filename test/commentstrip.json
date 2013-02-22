@@ -1,0 +1,5 @@
+{
+	// Some comment
+	test: [ "test1", "test2" ],
+	"test": "string /* that should be visible */",
+}
