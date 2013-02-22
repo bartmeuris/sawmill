@@ -12,6 +12,7 @@
  ***************************************************************************/
 
 #include "configmanager.h"
+#include "commentfilter.h"
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -19,6 +20,9 @@
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/iostreams/device/mapped_file.hpp>
+#include <boost/iostreams/device/file.hpp>
+#include <boost/iostreams/filter/stdio.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
 
 namespace bfs = boost::filesystem;
 namespace bio = boost::iostreams;
@@ -53,6 +57,18 @@ void ConfigManager::load()
 	MD5_Init(&md5context);
 	for (std::vector<std::string>::const_iterator it = configfiles.begin(); it != configfiles.end(); it++) {
 		std::cout << "Found configfile: " << *it << std::endl;
+
+		bio::filtering_istream in;
+		in.push(CommentFilter());
+		in.push(bio::file_source(*it));
+		std::string line;
+		while (in) {
+			std::getline (in, line);
+			std::cout << line << std::endl;
+		}
+		//std::istream incoming(&in);
+		//bio::copy(in, std::cout);
+
 		// Todo: Load this configuration file
 		this->addMD5(*it);
 	}
