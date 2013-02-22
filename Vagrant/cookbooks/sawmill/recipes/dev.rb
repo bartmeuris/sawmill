@@ -8,7 +8,7 @@ package "protobuf-compiler" do
 end
 
 # Boost
-package "libboost1.48-all-dev" do
+package "libboost1.48-all.dev" do
   action :install
 end
 
@@ -42,12 +42,20 @@ package "libzmq1" do
   action :install
 end
 
+package "libssl-dev" do
+  action :install
+end
+
 # Clang
 package "clang" do
   action :install
 end
 
 # Make etc
+package "build-essential" do
+  action :install
+end
+
 package "make" do
   action :install
 end
