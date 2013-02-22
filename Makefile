@@ -7,8 +7,8 @@
 
 #CC    ?= gcc
 #CXX   ?= g++
-CC := clang
-CXX := clang++
+CC    ?= clang
+CXX   ?= clang++
 LINK  := $(CXX)
 STRIP := strip
 SYMLINK := ln -f -s
@@ -16,6 +16,8 @@ PBC   :=/usr/bin/protoc
 colon := :
 empty :=
 space := $(empty) $(empty)
+SILENT :=
+
 
 #############################################################################
 # Project settings
@@ -23,7 +25,7 @@ space := $(empty) $(empty)
 
 DEFAULT_BUILD ?= debug
 
-TARGET        := sawmill
+APP_NAME        := sawmill
 VER_MAJOR     := 0
 VER_MINOR     := 1
 
@@ -41,9 +43,11 @@ PB_OBJECTS := \
 
 
 SHARED_LIBS   := pthread
+# OpenSSL for MD5 calculation
+SHARED_LIBS   := $(SHARED_LIBS):crypto
 # Comment/uncomment the following lines to produce a staticly linked executable
-SHARED_LIBS   := $(SHARED_LIBS):protobuf:boost_program_options:boost_regex:boost_filesystem:boost_system:zmq
-#STATIC_LIBS   := protobuf:boost_program_options:boost_regex:boost_filesystem:boost_system:zmq
+SHARED_LIBS   := $(SHARED_LIBS):protobuf:boost_program_options:boost_regex:boost_filesystem:boost_system:boost_iostreams:zmq
+#STATIC_LIBS   := protobuf:boost_program_options:boost_regex:boost_filesystem:boost_system:boost_iostreams:zmq
 
 C_DIRS        := .:./src
 H_DIRS        := .:./src
@@ -53,12 +57,16 @@ LIB_DIRS      := /usr/lib:/usr/local/lib
 
 DEFINES       := 
 
+CFLAGS += -pipe -Wall -pedantic 
+LFLAGS += -Wall
+
 #############################################################################
 # Auto defined/derived variables
 #
 
+BUILD_DATETIME     := $(shell date "+%Y%m%d%H%M%S")
 BUILD_MACHINE_NAME := $(shell hostname)
-OS_NAME := $(shell uname)
+OS_NAME            := $(shell uname)
 
 ifneq ($(STATIC_LIBS),)
   STATIC_LIBS    := $(subst $(colon)$(space),$(colon),$(STATIC_LIBS))
@@ -88,17 +96,20 @@ ifeq ($(DEFINES),)
 else
   DEFINES     := $(DEFINES):VER_MAJOR=$(VER_MAJOR):VER_MINOR=$(VER_MINOR)
 endif
+DEFINES := $(DEFINES)$(colon)APP_NAME="\"$(APP_NAME)\""
+DEFINES := $(DEFINES)$(colon)OS_NAME="\"$(OS_NAME)\""
 DEFINES := $(DEFINES)$(colon)BUILD_MACHINE_NAME="\"$(BUILD_MACHINE_NAME)\""
+DEFINES := $(DEFINES)$(colon)BUILD_DATETIME="\"$(BUILD_DATETIME)\""
 
 ###
 
-TARGET_DEBUG   := $(TARGET)_debug
-TARGET_RELEASE := $(TARGET)_release
+APP_NAME_DEBUG   := $(APP_NAME)_debug
+APP_NAME_RELEASE := $(APP_NAME)_release
 
 # Normal dependencies and objects
 DEPENDENCIES       := $(OBJECTS:%.o=%.d) $(PB_OBJECTS:.o:.d)
 OBJECTS_DEBUG      := $(OBJECTS:%.o=%.do)
-OBJECTS_RELEASE    := $(OBJECTS:%.o=%.o)
+OBJECTS_RELEASE    := $(OBJECTS)
 
 # Protocol buffer generated files and objects
 PB_GENS := $(PB_OBJECTS:.pb.o=.pb.cc) $(PB_OBJECTS:.pb.o=.pb.h)
@@ -108,8 +119,8 @@ PB_OBJECTS_RELEASE := $(PB_OBJECTS:%.o=%.o)
 DEFINES       := $(subst $(colon)$(space),$(colon),$(DEFINES))
 CFLAGS_DEFINE := -D$(subst $(colon), -D,$(DEFINES))
 
-CFLAGS_DEBUG := $(CFLAGS) -g -O1 $(CFLAGS_INCLUDE) $(CFLAGS_DEFINE) -DDEBUG
-LFLAGS_DEBUG := $(LFLAGS) -g -O1
+CFLAGS_DEBUG := $(CFLAGS) -g -O0 $(CFLAGS_INCLUDE) $(CFLAGS_DEFINE) -DDEBUG
+LFLAGS_DEBUG := $(LFLAGS) -g -O0
 
 # Enable optimization level 3 in release mode and don't add debug info to the object files.
 CFLAGS_RELEASE := $(CFLAGS) -O3 $(CFLAGS_INCLUDE) $(CFLAGS_DEFINE)
@@ -124,6 +135,10 @@ CXXFLAGS_RELEASE := $(CFLAGS_RELEASE) $(CXXFLAGS)
 CFLAGS_DEPENDENCIES := $(CFLAGS_DEFINE) $(CFLAGS_INCLUDE)
 CXXFLAGS_DEPENDENCIES := $(CFLAGS_DEFINE) $(CFLAGS_INCLUDE)
 
+ifneq ($(SILENT),)
+	SILENT := @
+endif
+
 #############################################################################
 # Build rules
 #
@@ -135,29 +150,65 @@ vpath %.proto $(PB_DIRS)
 .PRECIOUS: $(PBGENS)
 
 %.pb.cc: %.proto
-	$(PBC) $(PB_INCLUDE) --cpp_out=./ $<;
+    ifneq ($(SILENT),)
+	    @echo "Generating protocolbuffer classes for: $<"
+    endif
+	$(SILENT)$(PBC) $(PB_INCLUDE) --cpp_out=./ $<;
 
 %.do: %.c
-	$(CC) -c $(CFLAGS_DEBUG) -o $@ $<;
+    ifneq ($(SILENT),)
+	    @echo -n "Compiling $@"
+    endif
+	$(SILENT)$(CC) -c $(CFLAGS_DEBUG) -o $@ $<;
 
 %.do: %.cc
-	$(CXX) -c $(CXXFLAGS_DEBUG) -o $@ $<;
+    ifneq ($(SILENT),)
+	    @echo -n "Compiling $@"
+    endif
+	$(SILENT)$(CXX) -c $(CXXFLAGS_DEBUG) -o $@ $<;
+    ifneq ($(SILENT),)
+	    @echo " [OK]"
+    endif
 
 %.do: %.cpp
-	$(CXX) -c $(CXXFLAGS_DEBUG) -o $@ $<;
+    ifneq ($(SILENT),)
+	    @echo -n "Compiling $@"
+    endif
+	$(SILENT)$(CXX) -c $(CXXFLAGS_DEBUG) -o $@ $<;
+    ifneq ($(SILENT),)
+	    @echo " [OK]"
+    endif
 
 %.o: %.c
-	$(CC) -c $(CFLAGS_RELEASE) -o $@ $<;
+    ifneq ($(SILENT),)
+	    @echo -n "Compiling $@"
+    endif
+	$(SILENT)$(CC) -c $(CFLAGS_RELEASE) -o $@ $<;
+    ifneq ($(SILENT),)
+	    @echo " [OK]"
+    endif
 
 %.o: %.cc
-	$(CXX) -c $(CXXFLAGS_RELEASE) -o $@ $<;
+    ifneq ($(SILENT),)
+	    @echo -n "Compiling $@"
+    endif
+	$(SILENT)$(CXX) -c $(CXXFLAGS_RELEASE) -o $@ $<;
+    ifneq ($(SILENT),)
+	    @echo " [OK]"
+    endif
 
 %.o: %.cpp
-	$(CXX) -c $(CXXFLAGS_RELEASE) -o $@ $<;
+    ifneq ($(SILENT),)
+	    @echo -n "Compiling $@"
+    endif
+	$(SILENT)$(CXX) -c $(CXXFLAGS_RELEASE) -o $@ $<;
+    ifneq ($(SILENT),)
+	    @echo " [OK]"
+    endif
 
 # Dependency files
 %.d: %.c
-	@$(CC) -MM -MP $(CFLAGS_DEPENDENCIES) -MT '$(@:%.d=%.o) $(@:%.d=%.do) $@' -o $@ $< 2> /dev/null;
+	$(SILENT)@$(CC) -MM -MP $(CFLAGS_DEPENDENCIES) -MT '$(@:%.d=%.o) $(@:%.d=%.do) $@' -o $@ $< 2> /dev/null;
 
 %.d: %.cc
 	@$(CXX) -MM -MP $(CXXFLAGS_DEPENDENCIES) -MT '$(@:%.d=%.o) $(@:%.d=%.do) $@' -o $@ $< 2> /dev/null;
@@ -177,31 +228,55 @@ install:
 	# TODO
 
 clean: depclean pbclean
-	-rm -f $(TARGET_RELEASE) $(TARGET_DEBUG) $(TARGET) 
-	-rm -f $(OBJECTS_DEBUG) $(OBJECTS_RELEASE)
+    ifneq ($(SILENT),)
+	    @echo "Cleaning program files and objects..."
+    endif
+	$(SILENT)-rm -f $(APP_NAME_RELEASE) $(APP_NAME_DEBUG) $(APP_NAME)
+	$(SILENT)-rm -f $(OBJECTS_DEBUG) $(OBJECTS_RELEASE)
+	$(SILENT)-rm -f core
 
 pbclean:
-	-rm -f $(PB_OBJECTS_DEBUG) $(PB_OBJECTS_RELEASE) $(PB_GENS)
+    ifneq ($(SILENT),)
+	    @echo "Cleaning protocolbuffer files and objects..."
+    endif
+	$(SILENT)-rm -f $(PB_OBJECTS_DEBUG) $(PB_OBJECTS_RELEASE) $(PB_GENS)
 
 depclean:
-	-rm -f $(DEPENDENCIES)
+    ifneq ($(SILENT),)
+	    @echo "Cleaning dependency files..."
+    endif
+	$(SILENT)-rm -f $(DEPENDENCIES)
 
-release: $(TARGET_RELEASE)
+release: $(APP_NAME_RELEASE)
 
-debug: $(TARGET_DEBUG)
+debug: $(APP_NAME_DEBUG)
 
 # Add this rule to avoid make errors when the static library could not be found in the vpath.
 $(LIBDEPS_STATIC): ;
 
-$(TARGET_DEBUG): $(OBJECTS_DEBUG) $(PB_OBJECTS_DEBUG) $(LIBDEPS_STATIC)
-	$(LINK) $(LFLAGS_DEBUG) $^ -o $@ $(LIBDEPS_SHARED)
-	$(SYMLINK) $@ $(TARGET)
+$(APP_NAME_DEBUG): $(OBJECTS_DEBUG) $(PB_OBJECTS_DEBUG) $(LIBDEPS_STATIC)
+    ifneq ($(SILENT),)
+	    @echo -n "Linking DEBUG version..."
+    endif
+	$(SILENT)$(LINK) $(LFLAGS_DEBUG) $^ -o $@ $(LIBDEPS_SHARED)
+	$(SILENT)$(SYMLINK) $@ $(APP_NAME)
+    ifneq ($(SILENT),)
+	    @echo " [OK]"
+		@echo
+    endif
 
 
-$(TARGET_RELEASE): $(OBJECTS_RELEASE) $(PB_OBJECTS_RELEASE) $(LIBDEPS_STATIC)
-	$(LINK) $(LFLAGS_RELEASE) $^ -o $@ $(LIBDEPS_SHARED)
-	$(STRIP) $@
-	$(SYMLINK) $@ $(TARGET)
+$(APP_NAME_RELEASE): $(OBJECTS_RELEASE) $(PB_OBJECTS_RELEASE) $(LIBDEPS_STATIC)
+    ifneq ($(SILENT),)
+	    @echo -n "Linking RELEASE version..."
+    endif
+	$(SILENT)$(LINK) $(LFLAGS_RELEASE) $^ -o $@ $(LIBDEPS_SHARED)
+	$(SILENT)$(STRIP) $@
+	$(SILENT)$(SYMLINK) $@ $(APP_NAME)
+    ifneq ($(SILENT),)
+	    @echo " [OK]"
+		@echo
+    endif
 
 $(DEPENDENCIES): $(PB_GENS)
 
