@@ -12,7 +12,7 @@
  ***************************************************************************/
 
 #include "configmanager.h"
-#include "commentfilter.h"
+#include "jsonfixer.h"
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -81,16 +81,15 @@ void ConfigManager::reload()
 		std::cout << "Found configfile: " << *it << std::endl;
 
 		bio::filtering_istream in;
-		//in.push(CommentFilter());
+		in.push(JSONFixer());
 		in.push(bio::file_source(*it));
 
-		/*
 		std::string line;
 		while (in) {
 			std::getline (in, line);
 			std::cout << line << std::endl;
 		}
-		*/
+		continue;
 
 		// Todo: Load this configuration file
 		boost::property_tree::ptree pt;
@@ -167,11 +166,11 @@ void ConfigManager::findConfigFiles(const std::string &str)
 			std::cout << "!!! Warning: invalid wildcard pattern - not a directory:" << str << std::endl;
 			return;
 		}
-	
+		
 		// From http://stackoverflow.com/questions/3300419/file-name-matching-with-wildcard
 		// Escape all regex special chars
 		std::string wildcardPattern = p.filename().string();
-
+		
 		escapeRegex(wildcardPattern);
 		// Convert chars '*?' back to their regex equivalents
 		boost::replace_all(wildcardPattern, "\\?", ".");

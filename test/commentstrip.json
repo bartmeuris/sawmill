@@ -3,7 +3,11 @@
 	"test": "test",
 	/* "test2": 123 */
 	"test3": "test3",
-
+	"test4": {
+		"bla": [ "bla 1", "bla 2" ],
+		"test4bla":""
+	},
+	"test4": "test",
 	"end":""
 }
 
