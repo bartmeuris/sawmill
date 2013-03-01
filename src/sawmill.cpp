@@ -16,6 +16,7 @@
 
 #include "config.h"
 #include "sawmill.h"
+#include "version.h"
 
 namespace po = boost::program_options;
 
@@ -44,20 +45,7 @@ bool SawMill::ready()
 
 void SawMill::showVersion(std::ostream &out)
 {
-	out << APP_NAME << " version " << VER_MAJOR << "." << VER_MINOR;
-#ifdef VER_BUILD
-	out << "." << VER_BUILD;
-#endif
-	out << " (built on ";
-	out << OS_NAME;
-#ifdef BUILD_MACHINE_NAME
-	out << ":" <<  BUILD_MACHINE_NAME;
-#endif
-#ifdef BUILD_DATETIME
-	out << ":"<< BUILD_DATETIME;
-#endif
-	out << ")";
-	out << std::endl;
+	get_version(out);
 }
 
 
@@ -83,14 +71,16 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 	if ( vm.count("version")) {
-		mill.showVersion(std::cout);
-	}
-	if ( vm.count("help")) {
-		mill.showVersion(std::cout);
-		std::cout << desc << std::endl;
-		return 1;
+		get_version(std::cout, true);
+		return 0;
 	}
 
+	if ( vm.count("help")) {
+		get_version(std::cout);
+		std::cout << desc << std::endl;
+		return 0;
+	}
+	
 	// (Double) fork if necessary
 	
 	// Use boost::asio:::signal_set to handle signals/ctrl-c/...

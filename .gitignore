@@ -25,3 +25,7 @@
 
 # Vagrant files
 .vagrant
+
+# Auto generated header file
+version_gen.h
+
