@@ -7,7 +7,7 @@
 
 
 // Do some checking on RELEASE builds with uncommitted changes
-#if !defined(DEBUG) && defined(GIT_MODIFIED) && ( GIT_MODIFIED > 0 )
+#if !defined(IGNORE_RELEASE_CHANGES) && !defined(DEBUG) && defined(GIT_MODIFIED) && ( GIT_MODIFIED > 0 )
 # error RELEASE BUILD WITH UNCOMMITTED GIT CHANGES!!
 #endif
 #define TXTWIDTH 20

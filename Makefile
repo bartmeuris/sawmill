@@ -10,6 +10,7 @@
 CC    := clang
 CXX   := clang++
 LINK  := $(CXX)
+OBJCOPY := objcopy
 STRIP := strip
 SYMLINK := ln -f -s
 PBC   :=/usr/bin/protoc
@@ -81,6 +82,8 @@ LIB_DIRS      := \
 DEFINES       := 
 
 CFLAGS += -pipe -Wall -pedantic 
+#CFLAGS += -m32
+#CFLAGS += -m64
 LFLAGS += -Wall
 
 #############################################################################
@@ -119,6 +122,9 @@ endif
 
 # Determine Defines
 DEFINES += APP_NAME="\"$(APP_NAME)\""
+ifneq ($(IGNORE_RELEASE_CHANGES),)
+DEFINES += IGNORE_RELEASE_CHANGES
+endif
 
 APP_NAME_DEBUG   := $(APP_NAME)_debug
 APP_NAME_RELEASE := $(APP_NAME)_release
@@ -138,9 +144,9 @@ CFLAGS_DEFINE := $(addprefix -D,$(DEFINES))
 CFLAGS_DEBUG := $(CFLAGS) -g -O0 $(CFLAGS_INCLUDE) $(CFLAGS_DEFINE) -DDEBUG
 LFLAGS_DEBUG := $(LFLAGS) -g -O0
 
-# Enable optimization level 3 in release mode and don't add debug info to the object files.
-CFLAGS_RELEASE := $(CFLAGS) -O3 $(CFLAGS_INCLUDE) $(CFLAGS_DEFINE)
-LFLAGS_RELEASE := $(LFLAGS) -O3
+# Enable optimization level 3 in release mode. Add debug symbols, which will be saved externally.
+CFLAGS_RELEASE := $(CFLAGS) -g -O3 $(CFLAGS_INCLUDE) $(CFLAGS_DEFINE)
+LFLAGS_RELEASE := $(LFLAGS) -g -O3
 
 #CXXFLAGS += -std=c++11
 CXXFLAGS += -pedantic
@@ -277,7 +283,7 @@ clean: depclean pbclean
     ifneq ($(SILENT),)
 		@echo "Cleaning program files and objects..."
     endif
-	$(SILENT)-rm -f $(APP_NAME_RELEASE) $(APP_NAME_DEBUG) $(APP_NAME)
+	$(SILENT)-rm -f $(APP_NAME_RELEASE) $(APP_NAME_RELEASE).debug $(APP_NAME_DEBUG) $(APP_NAME_DEBUG).debug $(APP_NAME)
 	$(SILENT)-rm -f $(OBJECTS_DEBUG) $(OBJECTS_RELEASE)
 	$(SILENT)-rm -f $(VERSION_GENFILE)
 	$(SILENT)-rm -f core
@@ -305,6 +311,9 @@ $(APP_NAME_DEBUG): version $(OBJECTS_DEBUG) $(PB_OBJECTS_DEBUG) $(LIBDEPS_STATIC
 		@echo -n "Linking debug version '$(APP_NAME_DEBUG)'... "
     endif
 	$(SILENT)$(LINK) $(LFLAGS_DEBUG) $(OBJECTS_DEBUG) $(PB_OBJECTS_DEBUG) $(LIBDEPS_STATIC) -o $@ $(LIBDEPS_SHARED)
+	$(SILENT)$(OBJCOPY) --only-keep-debug $@ $@.debug
+	$(SILENT)$(OBJCOPY) --strip-debug $@
+	$(SILENT)$(OBJCOPY) --add-gnu-debuglink=$@.debug $@
 	$(SILENT)$(SYMLINK) $@ $(APP_NAME)
     ifneq ($(SILENT),)
 		@echo "[OK]"
@@ -317,7 +326,9 @@ $(APP_NAME_RELEASE): version $(OBJECTS_RELEASE) $(PB_OBJECTS_RELEASE) $(LIBDEPS_
 	    @echo -n "Linking release version '$(APP_NAME_RELEASE)'... "
     endif
 	$(SILENT)$(LINK) $(LFLAGS_RELEASE) $(OBJECTS_RELEASE) $(PB_OBJECTS_RELEASE) $(LIBDEPS_STATIC) -o $@ $(LIBDEPS_SHARED)
-	$(SILENT)$(STRIP) $@
+	$(SILENT)$(OBJCOPY) --only-keep-debug $@ $@.debug
+	$(SILENT)$(OBJCOPY) --strip-debug $@
+	$(SILENT)$(OBJCOPY) --add-gnu-debuglink=$@.debug $@
 	$(SILENT)$(SYMLINK) $@ $(APP_NAME)
     ifneq ($(SILENT),)
 	    @echo "[OK]"
