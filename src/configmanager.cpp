@@ -81,7 +81,7 @@ void ConfigManager::reload()
 		std::cout << "Found configfile: " << *it << std::endl;
 
 		bio::filtering_istream in;
-		in.push(JSONFixer());
+		in.push(JSONFixer(true, true));
 		in.push(bio::file_source(*it));
 
 		std::string line;
