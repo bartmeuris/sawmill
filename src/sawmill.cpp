@@ -1,4 +1,4 @@
-/****************************************************************************
+/***************************************************************************
  * Project: SawMill
  * Authors:
  *          Bart Meuris <bart . meuris @ gmail . com>
@@ -9,6 +9,7 @@
 #include <string>
 #include <iostream>
 #include <signal.h>
+#include <unistd.h>
 #include <boost/program_options.hpp>
 
 #include "command.pb.h"
@@ -37,10 +38,8 @@ bool SawMill::ready()
 {
 	// Check/load the config if needed
 	this->config().check();
-	// Check if it succeeded
-	if (!this->config().isLoaded())
-		return false;
-	return true;
+	// Return if it succeeded
+	return this->config().isLoaded();
 }
 
 void SawMill::showVersion(std::ostream &out)
@@ -58,6 +57,7 @@ int main(int argc, char* argv[])
 	desc.add_options()
 		("help,h", "Show this help message")
 		("version,v", "Show the version")
+		("foreground,f", "Run in foreground")
 		("config,c", po::value< std::vector<std::string> >(), "Specify a config file to use")
 	;
 	po::variables_map vm;
@@ -81,8 +81,6 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	
-	// (Double) fork if necessary
-	
 	// Use boost::asio:::signal_set to handle signals/ctrl-c/...
 	
 	
@@ -90,11 +88,19 @@ int main(int argc, char* argv[])
 	if (vm.count("config") > 0) {
 		mill.config().addConfigSource( vm["config"].as< std::vector< std::string> >() );
 	}
+	// Check configuration and state
 	if ( !mill.ready()) {
 		mill.showVersion(std::cout);
 		std::cout << desc << std::endl;
 		return 1;
 	}
+
+	// Run in background unless choosen otherwise
+	if ( ! vm.count("foreground") ) {
+		// Daemonize
+		daemon(1, 0);
+	}
+	
 
 	mill.run();
 
