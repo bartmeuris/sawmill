@@ -13,9 +13,52 @@ namespace sawmill{
 class JSONToken
 {
 public:
-	JSONToken()
+	enum Type {
+		TOK_STR,	 // String
+		TOK_NAME,    // Non-stringified identifier
+		TOK_ARR_S,   // [
+		TOK_ARR_E,   // ]
+		TOK_BLOCK_S, // {
+		TOK_BLOCK_E, // }
+		TOK_ROUND_S, // (
+		TOK_ROUND_E, // )
+		TOK_COMMA,   // ,
+		TOK_COLON,   // :
+		TOK_WHITE,   // Whitespace
+		TOK_NEWLINE, // Newline
+		TOK_PLUS,    // +
+		TOK_MIN,     // -
+		TOK_MUL,     // *
+		TOK_DIV,     // /
+		TOK_MOD,     // %
+		TOK_EQ,      // ==
+		TOK_NEQ,     // !=
+		TOK_NOT,     // !
+		TOK_LOG_AND, // &&
+		TOK_LOG_OR,  // ||
+		TOK_BIT_AND, // &
+		TOK_BIT_OR,  // |
+		TOK_SHIFT_L, // <<
+		TOK_SHIFT_R, // >>
+		TOK_EMPTY   // STUB
+	};
+	JSONToken(Type t) : val(), type(t) {}
+	JSONToken(): val(), type(TOK_EMPTY) {}
+	JSONToken(const std::string &v, Type t) : val(v), type(t) {}
+	JSONToken(const std::string &v): val(v), type(TOK_EMPTY) {}
+
+	void setVal(const std::string &newval)
 	{
+		this->val = newval;
 	}
+	void setType(Type newtype)
+	{
+		this->type = newtype;
+	}
+	std::string val;
+	Type type;
+private:
+		template<typename T> operator T () const;
 };
 
 class JSONFixer
@@ -44,6 +87,20 @@ private:
 			switch (c) {
 			case EOF:
 				go = false;
+				break;
+			case '=':
+				prev = std::cin.get();
+				c = std::cin.peek();
+				if ( c == '>' ) {
+					out.put(':');
+					go = false;
+				} else if (c == '=') {
+					out.put(prev);
+					out.put(std::cin.get());
+					go = false;
+				} else {
+					out.put(prev);
+				}
 				break;
 		// Generic single character separators
 			case '[':
