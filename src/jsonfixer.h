@@ -5,6 +5,8 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <stack>
+#include <vector>
 #include <boost/iostreams/filter/stdio.hpp>
 
 
@@ -22,25 +24,8 @@ public:
 		ARR_E,   // ]
 		BLOCK_S, // {
 		BLOCK_E, // }
-		ROUND_S, // (
-		ROUND_E, // )
 		COMMA,   // ,
 		COLON,   // :
-		PLUS,    // +
-		MIN,     // -
-		MUL,     // *
-		DIV,     // /
-		MOD,     // %
-		EQ,      // ==
-		NEQ,     // !=
-		NOT,     // !
-		BIT_INV, // ~
-		LOG_AND, // &&
-		LOG_OR,  // ||
-		BIT_AND, // &
-		BIT_OR,  // |
-		SHIFT_L, // <<
-		SHIFT_R, // >>
 		TNULL,   // null
 		TRUE,    // true
 		FALSE,   // false
@@ -71,33 +56,6 @@ public:
 		}
 		if (this->val.length() == 1) {
 			switch(this->val[0]) {
-			case '~':
-				setType(BIT_INV);
-				break;
-			case '&':
-				setType(BIT_AND);
-				break;
-			case '|':
-				setType(BIT_OR);
-				break;
-			case '!':
-				setType(NOT);
-				break;
-			case '%':
-				setType(MOD);
-				break;
-			case '/':
-				setType(DIV);
-				break;
-			case '*':
-				setType(MUL);
-				break;
-			case '-':
-				setType(MIN);
-				break;
-			case '+':
-				setType(PLUS);
-				break;
 			case ':':
 				setType(COLON);
 				break;
@@ -116,30 +74,9 @@ public:
 			case '}':
 				setType(BLOCK_E);
 				break;
-			case '(':
-				setType(ROUND_S);
-				break;
-			case ')':
-				setType(ROUND_E);
-				break;
 			case '\n':
 				setType(NEWLINE);
 				break;
-			}
-			if (this->type != EMPTY) return;
-		} else if (this->val.length() == 2) {
-			if (this->val == "==") {
-				setType(EQ);
-			} else if (this->val == "!=") {
-				setType(NEQ);
-			} else if (this->val == "&&") {
-				setType(LOG_AND);
-			} else if (this->val == "||") {
-				setType(LOG_OR);
-			} else if (this->val == "<<") {
-				setType(SHIFT_L);
-			} else if (this->val == ">>") {
-				setType(SHIFT_R);
 			}
 			if (this->type != EMPTY) return;
 		}
@@ -179,8 +116,8 @@ public:
 	explicit JSONFixer(bool strip_comments = true, bool strip_whitespace = true)
 		: stripcomments(strip_comments),
 		  stripwhitespace(strip_whitespace),
-		  os(&std::cout),
-		  is(&std::cin)
+		  os(NULL),
+		  is(NULL)
 	{ }
 	void set_ostream(std::ostream &new_ostream)
 	{
@@ -190,26 +127,56 @@ public:
 	{
 		this->is = &new_istream;
 	}
+	enum Expect {
+		EXPECT_OBJECT,
+		EXPECT_NAME,
+		EXPECT_DATASTART,
+		EXPECT_DATA
+	};
 
 	void fix()
 	{
-		this->set_ostream(std::cout);
-		this->set_istream(std::cin);
-		JSONToken tok;
+		JSONToken tok, ptok;
+		std::vector<JSONToken> tokens;
+		std::stack<JSONToken::Type> stack;
 		do {
 			tok = getToken();
-			if (tok.type == JSONToken::COMMENT) {
-				if (!stripcomments) {
-					this->out(tok.val);
+			/*
+			 * 1: expect object    - next should be "{"
+			 * 2: expect name      - should be a string
+			 * 3: expect datastart - {, [, string, number, true, false, null
+			 * 4: expect data      - all 
+			 * 5: expect comma     - } ] or ,
+			 */
+			if ((tok.type == JSONToken::WHITE) ||
+			    (tok.type == JSONToken::NEWLINE) ||
+			    (tok.type == JSONToken::COMMENT)) {
+				tokens.push_back(tok);
+				continue;
+			}
+			// Fix everything
+			tokens.push_back(tok);
+
+			// Store previous "relevant" token
+			ptok = tok;
+		} while (tok.type != JSONToken::END);
+
+		// Now output the corrected output
+		std::vector<JSONToken>::iterator it, end;
+		end = tokens.end();
+		for (it = tokens.begin(); it != end; it++) {
+			if (it->type == JSONToken::COMMENT) {
+				if (!this->stripcomments) {
+					this->out(it->val);
 				}
-			} else if (tok.type == JSONToken::WHITE) {
-				if (!stripwhitespace) {
-					this->out(tok.val);
+			} else if (it->type == JSONToken::WHITE) {
+				if (!this->stripwhitespace) {
+					this->out(it->val);
 				}
 			} else {
-				this->out(tok.val);
+				this->out(it->val);
 			}
-		} while (tok.type != JSONToken::END);
+		}
 	}
 
 private:
@@ -217,26 +184,28 @@ private:
 	bool stripwhitespace;
 	std::ostream *os;
 	std::istream *is;
-
 	int peek()
 	{
-		return this->is->peek();
+		if (this->is) return this->is->peek();
+		return EOF;
 	}
 	int get()
 	{
-		return this->is->get();
+		if (this->is) return this->is->get();
+		return EOF;
 	}
 	bool eof()
 	{
-		return this->is->eof();
+		if (this->is) return this->is->eof();
+		return true;
 	}
 	void out(const std::string &str)
 	{
-		*(this->os) << str;
+		if (this->os) *(this->os) << str;
 	}
 	void out(int c)
 	{
-		this->os->put(c);
+		if (this->os) this->os->put(c);
 	}
 	
 
@@ -265,27 +234,11 @@ private:
 				prev = get();
 				c = peek();
 				if ( c == '>' ) {
+					prev = get();
 					out.put(':'); outlen++;
-					go = false;
-				} else if (c == '=') {
-					out.put(prev); outlen++;
-					out.put(get()); outlen++;
 					go = false;
 				} else {
 					out.put(prev); outlen++;
-				}
-				break;
-			case '-':
-				if (outlen != 0) {
-					go = false;
-					break;
-				}
-				prev = get();
-				out.put(prev); outlen++;
-				c = peek();
-				if (( c < '0' ) || ( c > '9' )) {
-					// not numeric
-					go = false;
 				}
 				break;
 		// Generic single character separators
@@ -297,10 +250,6 @@ private:
 			case '}':
 			case ':':
 			case ',':
-			case '~':
-			case '+':
-			case '*':
-			case '%':
 				if (outlen == 0) {
 					out.put(get()); outlen++;
 				}
@@ -418,7 +367,6 @@ private:
 		}
 		return ret;
 	}
-
 };
 
 class JSONFixerFilter
@@ -437,6 +385,9 @@ private:
 	void do_filter()
 	{
 		JSONFixer fixer(stripcomments, stripwhitespace);
+		fixer.set_ostream(std::cout);
+		fixer.set_istream(std::cin);
+
 		fixer.fix();
 	}
 };
