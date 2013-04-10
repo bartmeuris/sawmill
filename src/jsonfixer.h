@@ -8,44 +8,53 @@
 #include <boost/iostreams/filter/stdio.hpp>
 
 
-namespace sawmill{
+namespace sawmill {
 
 class JSONToken
 {
 public:
 	enum Type {
-		TOK_STR,	 // String
-		TOK_NAME,    // Non-stringified identifier
-		TOK_ARR_S,   // [
-		TOK_ARR_E,   // ]
-		TOK_BLOCK_S, // {
-		TOK_BLOCK_E, // }
-		TOK_ROUND_S, // (
-		TOK_ROUND_E, // )
-		TOK_COMMA,   // ,
-		TOK_COLON,   // :
-		TOK_WHITE,   // Whitespace
-		TOK_NEWLINE, // Newline
-		TOK_PLUS,    // +
-		TOK_MIN,     // -
-		TOK_MUL,     // *
-		TOK_DIV,     // /
-		TOK_MOD,     // %
-		TOK_EQ,      // ==
-		TOK_NEQ,     // !=
-		TOK_NOT,     // !
-		TOK_LOG_AND, // &&
-		TOK_LOG_OR,  // ||
-		TOK_BIT_AND, // &
-		TOK_BIT_OR,  // |
-		TOK_SHIFT_L, // <<
-		TOK_SHIFT_R, // >>
-		TOK_EMPTY   // STUB
+		STRING,	 // String
+		INT,     // Integer number
+		FLOAT,   // Floating point number
+		NAME,    // Non-stringified identifier
+		ARR_S,   // [
+		ARR_E,   // ]
+		BLOCK_S, // {
+		BLOCK_E, // }
+		ROUND_S, // (
+		ROUND_E, // )
+		COMMA,   // ,
+		COLON,   // :
+		PLUS,    // +
+		MIN,     // -
+		MUL,     // *
+		DIV,     // /
+		MOD,     // %
+		EQ,      // ==
+		NEQ,     // !=
+		NOT,     // !
+		BIT_INV, // ~
+		LOG_AND, // &&
+		LOG_OR,  // ||
+		BIT_AND, // &
+		BIT_OR,  // |
+		SHIFT_L, // <<
+		SHIFT_R, // >>
+		TNULL,   // null
+		TRUE,    // true
+		FALSE,   // false
+		WHITE,   // Whitespace
+		NEWLINE, // Newline
+		COMMENT, // Comment
+		END,     // END OF FILE
+		EMPTY    // STUB
 	};
+
 	JSONToken(Type t) : val(), type(t) {}
-	JSONToken(): val(), type(TOK_EMPTY) {}
+	JSONToken(): val(), type(EMPTY) {}
 	JSONToken(const std::string &v, Type t) : val(v), type(t) {}
-	JSONToken(const std::string &v): val(v), type(TOK_EMPTY) {}
+	JSONToken(const std::string &v): val(v), type(EMPTY) {}
 
 	void setVal(const std::string &newval)
 	{
@@ -55,63 +64,245 @@ public:
 	{
 		this->type = newtype;
 	}
+	void guessType()
+	{
+		if ((this->type != EMPTY) || (this->val.length() == 0)) {
+			return;
+		}
+		if (this->val.length() == 1) {
+			switch(this->val[0]) {
+			case '~':
+				setType(BIT_INV);
+				break;
+			case '&':
+				setType(BIT_AND);
+				break;
+			case '|':
+				setType(BIT_OR);
+				break;
+			case '!':
+				setType(NOT);
+				break;
+			case '%':
+				setType(MOD);
+				break;
+			case '/':
+				setType(DIV);
+				break;
+			case '*':
+				setType(MUL);
+				break;
+			case '-':
+				setType(MIN);
+				break;
+			case '+':
+				setType(PLUS);
+				break;
+			case ':':
+				setType(COLON);
+				break;
+			case ',':
+				setType(COMMA);
+				break;
+			case '[':
+				setType(ARR_S);
+				break;
+			case ']':
+				setType(ARR_E);
+				break;
+			case '{':
+				setType(BLOCK_S);
+				break;
+			case '}':
+				setType(BLOCK_E);
+				break;
+			case '(':
+				setType(ROUND_S);
+				break;
+			case ')':
+				setType(ROUND_E);
+				break;
+			case '\n':
+				setType(NEWLINE);
+				break;
+			}
+			if (this->type != EMPTY) return;
+		} else if (this->val.length() == 2) {
+			if (this->val == "==") {
+				setType(EQ);
+			} else if (this->val == "!=") {
+				setType(NEQ);
+			} else if (this->val == "&&") {
+				setType(LOG_AND);
+			} else if (this->val == "||") {
+				setType(LOG_OR);
+			} else if (this->val == "<<") {
+				setType(SHIFT_L);
+			} else if (this->val == ">>") {
+				setType(SHIFT_R);
+			}
+			if (this->type != EMPTY) return;
+		}
+		if ((this->val[0] == ' ') || (this->val[0] == '\t')) {
+			setType(WHITE);
+			return;
+		}
+		if (this->val == "null") {
+			setType(TNULL);
+			return;
+		} else if (this->val == "true") {
+			setType(TRUE);
+			return;
+		} else if (this->val == "false") {
+			setType(FALSE);
+			return;
+		}
+		if ((this->val[0] == '"') && (this->val[this->val.length() - 1] == '"')) {
+			setType(STRING);
+			return;
+		}
+		std::string vstart = this->val.substr(0, 2);
+		if ( (vstart == "//") || (vstart == "/*") ){
+			setType(COMMENT);
+			return;
+		}
+	}
 	std::string val;
 	Type type;
 private:
-		template<typename T> operator T () const;
+	template<typename T> operator T () const;
 };
 
 class JSONFixer
-	: public boost::iostreams::stdio_filter
 {
 public:
 	explicit JSONFixer(bool strip_comments = true, bool strip_whitespace = true)
-		: stripcomments(strip_comments), stripwhitespace(strip_whitespace)
+		: stripcomments(strip_comments),
+		  stripwhitespace(strip_whitespace),
+		  os(&std::cout),
+		  is(&std::cin)
 	{ }
+	void set_ostream(std::ostream &new_ostream)
+	{
+		this->os = &new_ostream;
+	}
+	void set_istream(std::istream &new_istream)
+	{
+		this->is = &new_istream;
+	}
+
+	void fix()
+	{
+		this->set_ostream(std::cout);
+		this->set_istream(std::cin);
+		JSONToken tok;
+		do {
+			tok = getToken();
+			if (tok.type == JSONToken::COMMENT) {
+				if (!stripcomments) {
+					this->out(tok.val);
+				}
+			} else if (tok.type == JSONToken::WHITE) {
+				if (!stripwhitespace) {
+					this->out(tok.val);
+				}
+			} else {
+				this->out(tok.val);
+			}
+		} while (tok.type != JSONToken::END);
+	}
+
 private:
 	bool stripcomments;
 	bool stripwhitespace;
+	std::ostream *os;
+	std::istream *is;
 
-	std::string getToken()
+	int peek()
 	{
+		return this->is->peek();
+	}
+	int get()
+	{
+		return this->is->get();
+	}
+	bool eof()
+	{
+		return this->is->eof();
+	}
+	void out(const std::string &str)
+	{
+		*(this->os) << str;
+	}
+	void out(int c)
+	{
+		this->os->put(c);
+	}
+	
+
+	// Tokenizer 
+	JSONToken getToken()
+	{
+		JSONToken ret;
+
 		int prev, c;
 		std::stringstream out;
 		int outlen = 0;
 		bool go = true;
 		prev = 0;
-		if (std::cin.eof()) {
-			return "";
+		if (eof()) {
+			ret.setType(JSONToken::END);
+			return ret;
 		}
 		while ( go ) {
-			c = std::cin.peek();
+			c = peek();
 			switch (c) {
 			case EOF:
+				ret.setType(JSONToken::END);
 				go = false;
 				break;
 			case '=':
-				prev = std::cin.get();
-				c = std::cin.peek();
+				prev = get();
+				c = peek();
 				if ( c == '>' ) {
-					out.put(':');
+					out.put(':'); outlen++;
 					go = false;
 				} else if (c == '=') {
-					out.put(prev);
-					out.put(std::cin.get());
+					out.put(prev); outlen++;
+					out.put(get()); outlen++;
 					go = false;
 				} else {
-					out.put(prev);
+					out.put(prev); outlen++;
+				}
+				break;
+			case '-':
+				if (outlen != 0) {
+					go = false;
+					break;
+				}
+				prev = get();
+				out.put(prev); outlen++;
+				c = peek();
+				if (( c < '0' ) || ( c > '9' )) {
+					// not numeric
+					go = false;
 				}
 				break;
 		// Generic single character separators
+			case '(':
+			case ')':
 			case '[':
 			case ']':
 			case '{':
 			case '}':
 			case ':':
 			case ',':
+			case '~':
+			case '+':
+			case '*':
+			case '%':
 				if (outlen == 0) {
-					out.put(std::cin.get());
-					outlen++;
+					out.put(get()); outlen++;
 				}
 				go = false;
 				break;
@@ -126,16 +317,12 @@ private:
 					break;
 				}
 				do {
-					prev = std::cin.get();
-					if (!stripwhitespace) {
-						out.put(prev);
-						outlen++;
-					}
-					c = std::cin.peek();
+					prev = get();
+					out.put(prev); outlen++;
+					c = peek();
 				} while ((c == ' ') || (c == '\t'));
-				if (!stripwhitespace) {
-					go = false;
-				}
+				go = false;
+				ret.setType(JSONToken::WHITE);
 				break;
 		// New lines
 			case '\n':
@@ -143,13 +330,13 @@ private:
 				if (outlen == 0) {
 					// Send "newline" token
 					do {
-						std::cin.get();
-						c = std::cin.peek();
+						get();
+						c = peek();
 					} while ((c == '\n') || (c == '\r'));
-					out.put('\n');
-					outlen++;
+					out.put('\n'); outlen++;
 				}
 				// Always end of token.
+				ret.setType(JSONToken::NEWLINE);
 				go = false;
 				break;
 		// Strings
@@ -160,14 +347,13 @@ private:
 				}
 				// Fetch until a new " is encountered
 				do {
-					prev = std::cin.get();
-					out.put(prev);
-					outlen++;
-					c = std::cin.peek();
+					prev = get();
+					out.put(prev); outlen++;
+					c = peek();
 				} while ( ( c != EOF ) && ( ( c != '"' ) || ( ( c == '"' ) && (prev == '\\') ) ) );
-				std::cin.get();
-				out.put('"');
-				outlen++;
+				get();
+				out.put('"'); outlen++;
+				ret.setType(JSONToken::STRING);
 				go = false;
 				break;
 		// Comments
@@ -176,101 +362,90 @@ private:
 					go = false;
 					break;
 				}
-				prev = std::cin.get();
-				c = std::cin.peek();
+				prev = get();
+				c = peek();
 				if (c == '/') {
 					// Line comment
 					if (!stripcomments) {
-						out.put(prev);
-						outlen++;
+						out.put(prev); outlen++;
 					}
-					while (!std::cin.eof()) {
-						c = std::cin.get();
+					while (!eof()) {
+						c = get();
 						if ((c == '\n') || (c == '\r')) {
-							if (!stripcomments) {
-								// Don't eat newlines if comments are not stripped
-								std::cin.unget();
-								go = false;
-							}
+							go = false;
+							ret.setType(JSONToken::COMMENT);
 							break;
 						} else if (!stripcomments) {
-							out.put(c);
-							outlen++;
+							out.put(c); outlen++;
 						}
 					}
 				} else if (c == '*') { 
 					// Block comment
-					if (!stripcomments) {
-						out.put(prev);
-						outlen++;
-						out.put(c);
-						outlen++;
-					}
-					prev = std::cin.get(); // Flush '*'
-					c = std::cin.get();
+					out.put(prev); outlen++;
+					out.put(c); outlen++;
+					prev = get(); // Flush '*'
+					c = get();
 					if (c == EOF) {
 						go = false;
+						ret.setType(JSONToken::COMMENT);
 						break;
 					}
 					do {
-						if (!stripcomments) {
-							out.put(c);
-							outlen++;
-						}
+						out.put(c); outlen++;
 						prev = c;
-						c = std::cin.get();
+						c = get();
 					} while ( ( c != EOF ) && ( prev != '*' ) && ( c != '/' ) );
 					if (c == '/') {
-						if (!stripcomments) {
-							out.put(c);
-							outlen++;
-						}
+						out.put(c); outlen++;
 					}
-					if (!stripcomments) {
-						go = false;
-					}
+					ret.setType(JSONToken::COMMENT);
+					go = false;
 				} else if (c == EOF) {
 					go = false;
 				} else {
-					out.put(prev);
-					outlen++;
+					out.put(prev); outlen++;
 				}
 				break;
 		// Default output ?
 			default:
-				out.put(std::cin.get());
+				out.put(get()); outlen++;
 				break;
 			}
 		}
-		return out.str();
+		ret.setVal(out.str());
+		if (ret.type == JSONToken::EMPTY) {
+			ret.guessType();
+		}
+		return ret;
 	}
 
-	void out(const std::string &str)
-	{
-		std::cout << str;
-	}
-	void out(int c)
-	{
-		std::cout.put(c);
-	}
+};
+
+class JSONFixerFilter
+	: public boost::iostreams::stdio_filter
+{
+public:
+	explicit JSONFixerFilter(bool strip_comments = true, bool strip_whitespace = true)
+		: stripcomments(strip_comments),
+		  stripwhitespace(strip_whitespace)
+	{}
+
+private:
+	bool stripcomments;
+	bool stripwhitespace;
 
 	void do_filter()
 	{
-		std::string ret;
-		do {
-			ret = getToken();
-			/*
-			if (ret == "\n") {
-				std::cout << "Token: --\\n--\n";
-			} else {
-				std::cout << "Token: --" << ret << "--\n";
-			}
-			*/
-			std::cout << ret;
-		} while (ret != "");
+		JSONFixer fixer(stripcomments, stripwhitespace);
+		fixer.fix();
 	}
+};
 
-	void do_filter_comments()
+class JSONFixerFilter_old
+	: public boost::iostreams::stdio_filter
+{
+public:
+	void do_filter()
 	{
 		int lastchar = 0, c;
 		bool comment_block = false;
@@ -316,8 +491,8 @@ private:
 			lastchar = c;
 		}
 	}
-
 };
+
 
 } // namespace sawmill
 

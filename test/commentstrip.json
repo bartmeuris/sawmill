@@ -1,5 +1,6 @@
 {
 	// Test 
+	test: Test
 	"test": "test",
 	/* "test2": 123 */
 	"test3": "test3",
