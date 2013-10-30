@@ -1,19 +1,21 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-Vagrant::Config.run do |config|
+Vagrant.configure("2") do |config|
   config.vm.box = "precise32"
   config.vm.box_url = "http://files.vagrantup.com/precise32.box"
-  # config.vm.boot_mode = :gui
-  config.vm.customize ["modifyvm", :id, "--memory", 2048]
-  config.vm.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
 
-  config.vm.forward_port 80, 8000
-  config.vm.forward_port 8080, 8080
+  config.vm.network :forwarded_port, guest: 80, host: 8000
+  config.vm.network :forwarded_port, guest: 8080, host: 8080
+  config.ssh.forward_agent = true
 
-  config.vm.share_folder "sawmill-dev", "/home/vagrant/sawmill", ".."
-  # By default, virtualbox doesn't allow symlinks on shares
-  config.vm.customize ["setextradata", :id, "VBoxInternal2/SharedFoldersEnableSymlinksCreate/sawmill-dev", "1"]
+  config.vm.synced_folder "..", "/home/vagrant/sawmill", owner: "vagrant", group: "vagrant"
+  config.vm.provider :virtualbox do |vb|
+    #vb.gui = true
+    vb.customize ["modifyvm", :id, "--memory", "2048"]
+    vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+    vb.customize ["setextradata", :id, "VBoxInternal2/SharedFoldersEnableSymlinksCreate/sawmill-dev", "1"]
+  end
 
   config.vm.provision :chef_solo do |chef|
     chef.cookbooks_path = [ "cookbooks", "~/.chef/cookbooks/" ]
