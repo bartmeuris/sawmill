@@ -33,8 +33,9 @@ VER_MINOR     := 1
 # Main application objects
 OBJECTS := \
 	sawmill.o \
-	version.o \
 	configmanager.o \
+	sawlog.o \
+	version.o \
 	# End of list
 
 # Protocol buffer objects
@@ -81,10 +82,10 @@ LIB_DIRS      := \
 
 DEFINES       := 
 
-CFLAGS += -pipe -Wall -pedantic 
-#CFLAGS += -m32
-#CFLAGS += -m64
-LFLAGS += -Wall
+CFLAGS += -std=gnu99 -pipe -Wextra -Wall -pedantic
+CXXFLAGS += -std=c++11 -pipe -Wextra -Wall -pedantic
+
+LFLAGS += -Wall -pthread
 
 #############################################################################
 # Auto defined/derived variables
@@ -145,11 +146,8 @@ CFLAGS_DEBUG := $(CFLAGS) -g -O0 $(CFLAGS_INCLUDE) $(CFLAGS_DEFINE) -DDEBUG
 LFLAGS_DEBUG := $(LFLAGS) -g -O0
 
 # Enable optimization level 3 in release mode. Add debug symbols, which will be saved externally.
-CFLAGS_RELEASE := $(CFLAGS) -g -O3 $(CFLAGS_INCLUDE) $(CFLAGS_DEFINE)
-LFLAGS_RELEASE := $(LFLAGS) -g -O3
-
-#CXXFLAGS += -std=c++11
-CXXFLAGS += -pedantic
+CFLAGS_RELEASE := $(CFLAGS) -g -O2 $(CFLAGS_INCLUDE) $(CFLAGS_DEFINE)
+LFLAGS_RELEASE := $(LFLAGS) -g -O2
 
 CXXFLAGS_DEBUG   := $(CFLAGS_DEBUG) $(CXXFLAGS)
 CXXFLAGS_RELEASE := $(CFLAGS_RELEASE) $(CXXFLAGS)
