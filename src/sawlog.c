@@ -222,7 +222,7 @@ static void set_lvlcolor(int lvl)
 // Set psuedo-random, always the same color based on a number (used with thread-id)
 void setNumColor(unsigned long col)
 {
-	switch ((int)(col % 13UL)) {
+	switch ((int)(col % 13UL)) { // use a prime number :)
 	case 0:
 		setColor(cl_darkgrey);
 		break;
@@ -270,9 +270,13 @@ void log_threadid(pthread_t threadid)
 {
 	setColor(cl_thread_id_br);
 	fputc(thread_id_s, *log_out);
-
-	setNumColor(threadid >> 12UL);
-	fprintf(*log_out, "%lx", threadid >> 12);
+	
+	// Set random color
+	setNumColor(threadid);
+	// FIXME: Not sure if this is ok what I do here, thread id's always seem to be in the form of 7fxxxxxxxx00
+	//        probably memory manager related so what I do here is probably wrong :p
+	fprintf(*log_out, "%07lx", 0xFFFFFFF & (threadid >> 12) );
+	//fprintf(*log_out, "%07lx", threadid );
 
 	setColor(cl_thread_id_br);
 	fputc(thread_id_e, *log_out);
@@ -589,8 +593,8 @@ void log_setoutput(FILE *out)
 
 #ifdef DEBUG_SAWLOG_C
 
-#define SPAM_THREADS 200
-//#define SPAM_THREADS LOG_LVL_MAX
+//#define SPAM_THREADS 200
+#define SPAM_THREADS LOG_LVL_MAX
 //#define SPAM_THREADS 1
 #define SPAM_LINES 100
 
@@ -634,6 +638,7 @@ int main()
 	printf("## START THREADS DONE\n");
 #endif
 
+	NOTICE("ERROR TEST");
 	ERR("ERROR TEST: %d", 123);
 	WARN("WARNING TEST: %d", 123);
 	NOTICE("NOTICE TEST: %d", 123);
