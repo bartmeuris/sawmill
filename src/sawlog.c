@@ -58,10 +58,13 @@ static FILE **log_out = NULL;
 static int do_color = 0;
 
 // Configure date/time output
-static color_t cl_datetime = cl_blue;
+static color_t cl_datetime = cl_none;
 static color_t cl_datetime_br = cl_darkgrey;
 static char date_time_s = '[';
 static char date_time_e = ']';
+static char *format_date = "%04d-%02d-%02d";
+static char *format_time = "%02d:%02d:%02d+%04ld";
+
 
 // Configure thread-id output
 static color_t cl_thread_id_br = cl_darkgrey;
@@ -69,12 +72,10 @@ static char thread_id_s = '[';
 static char thread_id_e = ']';
 
 // Configure line end output
-static color_t cl_lineend = cl_darkgrey;
-static color_t cl_lineend_br = cl_none;
+static color_t cl_lineend = cl_none;
+static color_t cl_lineend_br = cl_darkgrey;
 static char line_end_s = '[';
 static char line_end_e = ']';
-static char *format_date = "%04d-%02d-%02d";
-static char *format_time = "%02d:%02d:%02d+%04ld";
 
 // Mutex for threading - lock the queue array
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -203,7 +204,7 @@ static void set_lvlcolor(int lvl)
 			setColor(cl_red);
 			break;
 		case LOG_NOTICE:
-			setColor(cl_blue);
+			setColor(cl_green);
 			break;
 		case LOG_INFO:
 			setColor(cl_none);
@@ -308,7 +309,6 @@ static void log_fileline(const char* func, const char *file, int line)
 	// Output file/line number
 	fputc(' ', *log_out);
 	setColor(cl_lineend_br);
-	fputc(' ', *log_out);
 	fputc(line_end_s, *log_out);
 
 	setColor(cl_lineend);
@@ -425,7 +425,7 @@ static void log_thread_process(void *arg)
 	pthread_cond_signal(&wait_log_thread);
 
 	//printf("-- BACKGROUND THREAD STARTED\n");
-	while (1) {
+	for (;;) {
 		if (log_lock()) {
 			break;
 		}
@@ -477,8 +477,8 @@ static void log_thread_process(void *arg)
 
 void _logout_threaded(int lvl, const char *file, int line, const char *func, const char *format, ...)
 {
-	va_list ap, ap_t;
-	int ret;
+	va_list ap;
+	int ret, size = 120;
 	log_entry *log_line;
 
 	if (lvl > log_level) return;
@@ -490,13 +490,22 @@ void _logout_threaded(int lvl, const char *file, int line, const char *func, con
 	// Init the log if needed
 	init_log();
 
-	// Format output string
-	va_start(ap, format);
-	va_copy(ap_t, ap);
-	ret = vsnprintf(log_line->msg, 0, format, ap_t);
-	log_line->msg = malloc(ret+1);
-	ret = vsnprintf(log_line->msg, ret+1, format, ap);
-	va_end(ap);
+	// Format output string. First try with a default sized buffer to avoid double work
+	log_line->msg = malloc(size);
+	for (;;) {
+		va_start(ap, format);
+		ret = vsnprintf(log_line->msg, size, format, ap);
+		va_end(ap);
+		if ((ret > -1) && ( ret < size)) {
+			break;
+		}
+		if (ret > -1) {
+			size = ret + 1; // glibc 2.1: we get exactly the size required
+		} else {
+			size *= 2; // old glibc: double the buffer.
+		}
+		log_line->msg = realloc(log_line->msg, size);
+	}
 
 	log_entry_push(log_line);
 }
@@ -599,9 +608,11 @@ void spam_log(void *arg)
 	int i;
 	int tid = (*(int*)arg);
 	int lvl = ((*(int*)arg) % LOG_LVL_MAX) + 1;
-	random_sleep();
-	for (i = 0; i < SPAM_LINES; i++) {
+	for (i = 0; i < 10; i++) {
 		random_sleep();
+	}
+	for (i = 0; i < SPAM_LINES; i++) {
+		if (tid % 2) random_sleep();
 		LOG(lvl, "[%d/%d] SPAM LOG: %d", lvl, tid, i);
 	}
 	pthread_exit(NULL);
@@ -618,7 +629,7 @@ int main()
 	printf("## START THREADS\n");
 	for (i = 0; i < SPAM_THREADS; i++) {
 		thread_lvl[i] = i + 1;
-		pthread_create(&spammers[i], NULL, (void*)spam_log, &thread_lvl[i]);
+		pthread_create(&spammers[i], NULL, (void *(*)(void *))spam_log, &thread_lvl[i]);
 	}
 	printf("## START THREADS DONE\n");
 #endif
