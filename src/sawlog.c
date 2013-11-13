@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+
 #include <time.h>
 #include <pthread.h>
 
@@ -63,7 +64,6 @@ static char date_time_s = '[';
 static char date_time_e = ']';
 
 // Configure thread-id output
-static color_t cl_thread_id = cl_darkmagenta;
 static color_t cl_thread_id_br = cl_darkgrey;
 static char thread_id_s = '[';
 static char thread_id_e = ']';
@@ -117,7 +117,8 @@ static inline void init_log()
 	
 	// Threading support
 	pthread_mutexattr_init(&mutex_atr);
-	pthread_mutexattr_settype(&mutex_atr, PTHREAD_MUTEX_RECURSIVE);
+	//pthread_mutexattr_settype(&mutex_atr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutexattr_settype(&mutex_atr, PTHREAD_MUTEX_RECURSIVE_NP);
 	pthread_mutex_init(&mutex, &mutex_atr);
 	log_lock();
 
@@ -126,7 +127,7 @@ static inline void init_log()
 
 	log_setoutput(NULL);
 #ifdef LOG_THREADED
-	if (pthread_create(&log_thread, NULL, (void *)log_thread_process, NULL)) {
+	if (pthread_create(&log_thread, NULL, (void *(*)(void *))log_thread_process, NULL)) {
 		fprintf(stderr, "LOGGER: ERROR CREATING BACKGROUND THREAD!\n");
 		exit(1);
 	} else {
